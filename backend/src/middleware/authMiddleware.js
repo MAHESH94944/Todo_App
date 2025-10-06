@@ -1,11 +1,17 @@
 const jwt = require("jsonwebtoken");
 
 const authMiddleware = (req, res, next) => {
-  const token = req.cookies?.token || "";
+  // Support token in httpOnly cookie or Authorization header
+  let token = req.cookies?.token || "";
   if (!token) {
-    return res
-      .status(401)
-      .json({ message: "Unauthorized - no token provided" });
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.split(" ")[0] === "Bearer") {
+      token = authHeader.split(" ")[1];
+    }
+  }
+
+  if (!token) {
+    return res.status(401).json({ message: "Unauthorized - no token provided" });
   }
 
   try {
@@ -13,9 +19,7 @@ const authMiddleware = (req, res, next) => {
     req.user = decoded;
     return next();
   } catch (error) {
-    return res
-      .status(401)
-      .json({ message: "Unauthorized", error: error.message });
+    return res.status(401).json({ message: "Unauthorized", error: error.message });
   }
 };
 

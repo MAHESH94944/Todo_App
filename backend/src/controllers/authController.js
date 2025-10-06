@@ -39,7 +39,6 @@ const register = async (req, res) => {
       user: { username: user.username, email: user.email },
       token,
     });
-
   } catch (err) {
     return res
       .status(500)
@@ -90,8 +89,34 @@ const logout = (req, res) => {
   return res.status(200).json({ message: "Logged out" });
 };
 
+const me = async (req, res) => {
+  try {
+    // Try to extract token from cookie or Authorization header
+    let token = req.cookies?.token || "";
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.split(" ")[0] === "Bearer") {
+        token = authHeader.split(" ")[1];
+      }
+    }
+
+    if (!token) {
+      return res.status(200).json({ user: null });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await userModel.findById(decoded.id).select("-password");
+    if (!user) return res.status(200).json({ user: null });
+    return res.status(200).json({ user });
+  } catch (err) {
+    // If token invalid or expired, respond with user: null (200) to avoid 401 noise
+    return res.status(200).json({ user: null });
+  }
+};
+
 module.exports = {
   register,
   login,
   logout,
+  me,
 };
